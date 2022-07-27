@@ -1,0 +1,112 @@
+-- 1/количество исполнителей в каждом жанре;
+SELECT g.name, count(*) 
+FROM artist_genre ag 
+JOIN genre g 
+ON ag.genre_id=g.id  
+GROUP BY (g.name);
+
+-- 2/количество треков, вошедших в альбомы 2019-2020 годов;
+SELECT count(*) 
+FROM album a 
+JOIN track t 
+ON a.id = t.album_id 
+WHERE date_part('year', a.release_date) 
+between 2019 and 2020;
+
+-- 3/средняя продолжительность треков по каждому альбому;
+SELECT a.name, avg(duratiON) 
+FROM album a 
+LEFT JOIN track t 
+ON t.album_id = a.id 
+GROUP BY a.name;
+
+-- 4/все исполнители, которые не выпустили альбомы в 2020 году;
+SELECT a1.name 
+FROM artist a1 
+WHERE a1.id not in 
+(SELECT a.id 
+FROM artist_album  
+JOIN artist a 
+ON artist_id = a.id 
+JOIN album al 
+ON album_id=al.id 
+WHERE date_part('year', al.release_date)=2020) ;
+
+-- 5/названия сборников, в которых присутствует конкретный исполнитель (выберите сами);
+--SELECT a.name, ms.name
+--FROM (SELECT artist.name, artist.id FROM artist WHERE artist.name='Wolfe') a JOIN artist_album aa ON a.id = aa.artist_id
+--JOIN track t ON t.album_id = aa.album_id 
+--JOIN track_set ts ON t.id=ts.track_id 
+--JOIN music_set ms ON ts.set_id=ms.id ;
+SELECT a.name, ms.name
+FROM artist a 
+JOIN artist_album aa 
+ON a.id = aa.artist_id
+JOIN track t 
+ON t.album_id = aa.album_id 
+JOIN track_set ts 
+ON t.id=ts.track_id 
+JOIN music_set ms 
+ON ts.set_id=ms.id
+WHERE a.name='Wolfe';
+
+-- 6/название альбомов, в которых присутствуют исполнители более 1 жанра;
+--SELECT a.name 
+--FROM (SELECT ag.artist_id FROM artist_genre ag GROUP BY 1 HAVING count(genre_id)>1) ag 
+--JOIN artist_album aa
+--ON aa.artist_id = ag.artist_id
+--JOIN album a ON a.id=aa.album_id ;
+SELECT a.name 
+FROM artist_genre ag 
+JOIN artist_album aa
+ON aa.artist_id = ag.artist_id
+JOIN album a 
+ON a.id=aa.album_id 
+GROUP BY 1 
+HAVING count(genre_id)>1;
+
+-- 7/наименование треков, которые не входят в сборники;
+SELECT t.id, t.name
+FROM track t 
+LEFT JOIN track_set ts 
+ON t.id=ts.track_id 
+WHERE ts.track_id is null;
+
+-- 8/исполнителя(-ей), написавшего самый короткий по продолжительности трек (теоретически таких треков может быть несколько);
+--SELECT a.name, (SELECT min(duratiON) FROM track)
+--FROM artist a JOIN artist_album aa ON a.id=aa.artist_id 
+--WHERE aa.album_id in 
+--(SELECT distinct t.album_id
+--FROM track t  WHERE duratiON=(SELECT min(duratiON) FROM track)) ;
+SELECT a.name, duratiON
+FROM artist a 
+JOIN artist_album aa 
+ON a.id=aa.artist_id
+JOIN track 
+ON aa.album_id =track.album_id 
+JOIN 
+(SELECT track.id, min(duratiON) md 
+FROM track 
+GROUP BY 1 ORDER BY md ASC LIMIT 1) tdt 
+ON tdt.id=track.id
+WHERE duratiON = tdt.md;
+
+-- 9/название альбомов, содержащих наименьшее количество треков.
+--SELECT name, t.tc FROM album JOIN 
+--(SELECT album_id, tc FROM 
+--(SELECT t.album_id, count(t.id) tc
+--FROM track t GROUP BY 1) tct
+--WHERE tc= (SELECT count(id) FROM track GROUP BY album_id  ORDER BY count(id) ASC LIMIT 1 )) t
+--ON t.album_id =album.id;
+SELECT  a.name,a.id, tct.tc 
+FROM album a
+JOIN track t 
+ON a.id=t.album_id 
+JOIN 
+(SELECT  count(album_id) tc 
+FROM track 
+GROUP BY album_id  ORDER BY count(album_id) ASC LIMIT 1) tct 
+ON 1=1
+GROUP BY 1,2,3
+HAVING count(t.album_id)= tc;
+
